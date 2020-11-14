@@ -1,0 +1,6 @@
+{
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.venvPath": "/Users/mobal/Library/Caches/pypoetry/virtualenvs/",
+    "python.pythonPath": "/Users/mobal/Library/Caches/pypoetry/virtualenvs/hahu-jBITDAmP-py3.9/bin/python"
+}
