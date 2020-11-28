@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 import argparse
+import json
 import logging
+import math
 import requests
 import sys
 
@@ -15,16 +17,16 @@ parser.add_argument('--user-agent',
                     default='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0',
                     help='User-Agent',
                     nargs='?')
-base_url = 'https://www.hasznaltauto.hu/talalatilista'
-filter_list = 'PDNG2VG3N3NTADH5C57UD3BEZWTD43RICZQAQBQM3CV4DREMUPUMEQESRUTEL7T5STWLNFU3E4J6OSHEEF4WIEGLE7Y6MRKZRFBEDQEWTSCB35WFGNR2KKH4BUG6UK3UQEJLIEQF5D6OA3WEJ7JDKGGQ67IIBPYVZ553CGET6QGGW4FVSE3CMWMIUKMDH4B2MXLKFQGO2XM33XJDEJPPXKGPKUW6QUE7YGMS5ZIRIWM34G2RWTQMAHRENDUR6HFIMKT2BSJ64C4OMHQ55IJQM6SAP52E4L3QBZYIMUIR65ZGJEJ4RNWUGI2WPZQJHHVG4B5T6LGYUHXXJ4FRA2V2WFVJ3C37TGD7PB37ZHANR7QBOGP4ROXJOB7UANIXDAKD44BZTX6SQ47Y4DAFJF3NWDHUKO5PM353DO5UVBNYRYA2PIEWZUUGBE527XHDQNNI6VECZGKYN7DBWQK6HJ7UMPO3GH3DYNAI57NV7RLGZLKRONTTAD326ZBPINGANLHKJUTDG4NZGJHOEPVM5TEK4DCBTG43CMRKZPF7UO3WGTMCXNCZ4ZQZ352UDG2IMC4FZCXXGXUKOKEKWGCXIO6IZ4LSRBLTCXQN6F5NBSM2J5UFW5E5BNZ2COMXX4A45QD6EJK3GMINZTNOWND27RFHC6Z4P6G6MRRKWVL4LN6NVOE67V2AQDUY56JQPF7VH3DNGXC5SEGS2NI34TWBSJI5JKCCWSH26YNPIHGQYA52MMPVWOMF3GJUUSYDWORQDTJF5LESVJBXDCOXWU3EV76ZJYZZUG74ZRHXMTUUJDW2FQF67D3TUC62FL4P4RNNAJSTWQMX4OX4GP4EJ36DXD4RT7FEINT5ATUE3X7QGQEGSUDA'
+base_url = 'https://www.hasznaltauto.hu'
 
 args = parser.parse_args()
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+page_size = 20
 
 def __get(url):
     res = requests.get(url, headers={'User-Agent': args.user_agent})
     if res.ok:
-        return res.content
+      return res.content
     else:
       log.error(res.status_code)
       sys.exit(res.status_code)
@@ -41,11 +43,59 @@ def __parse(divs):
       log.info(details.text)
       log.info(price.text)
 
+def __post(url, headers, payload):
+  res = requests.post(url, data=payload, headers=headers)
+  if res.ok:
+    return res
+  else:
+    log.error(res.status_code)
+    sys.exit(res.status_code)
+
+def __get_search_url():
+  headers = {
+    'Accept': 'application/json, text/javascript, */*, q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': args.user_agent,
+    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
+  }
+  payload = {
+    'HirdetesSzemelyautoSearch[marka_id]': 146,
+    'HirdetesSzemelyautoSearch[modell_id]': 1679,
+    'HirdetesSzemelyautoSearch[evjarat_min]': 2015,
+    'HirdetesSzemelyautoSearch[kivitel][]': 120,
+    'HirdetesSzemelyautoSearch[vetelar_min]': 2750000,
+    'HirdetesSzemelyautoSearch[vetelar_max]': 3500000,
+    'HirdetesSzemelyautoSearch[uzemanyag][]': 1,
+    'getSearchUrl': 1
+  }
+  return json.loads(__post(base_url + '/egyszeru/szemelyauto', headers, payload).content)['formUrl'].rsplit('/', 1)[-1]
+
+def __get_total():
+  headers = {
+    'Accept': 'application/json, text/javascript, */*, q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': args.user_agent,
+    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
+  }
+  payload = {
+    'HirdetesSzemelyautoSearch[marka_id]': 146,
+    'HirdetesSzemelyautoSearch[modell_id]': 1679,
+    'HirdetesSzemelyautoSearch[evjarat_min]': 2015,
+    'HirdetesSzemelyautoSearch[kivitel][]': 120,
+    'HirdetesSzemelyautoSearch[vetelar_min]': 2750000,
+    'HirdetesSzemelyautoSearch[vetelar_max]': 3500000,
+    'HirdetesSzemelyautoSearch[uzemanyag][]': 1
+  }
+  return json.loads(__post(base_url + '/egyszeru/szemelyauto', headers, payload).content)['totalCount']
+  
+
 def crawl():
   curr = 0
-  last = 1
+  last = math.ceil(__get_total() / page_size)
+  search_key = __get_search_url()
   while curr < last:
-    url = base_url + '/' + filter_list + '/page' + str(curr + 1)
+    url = base_url + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1)
+    log.info(url)
     res = __get(url)
     __parse(BeautifulSoup(res, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
     if curr == 0:
