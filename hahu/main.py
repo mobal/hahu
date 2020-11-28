@@ -78,13 +78,13 @@ def __get_total():
     'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
   }
   payload = {
-    'HirdetesSzemelyautoSearch[marka_id]': 146,
-    'HirdetesSzemelyautoSearch[modell_id]': 1679,
-    'HirdetesSzemelyautoSearch[evjarat_min]': 2015,
-    'HirdetesSzemelyautoSearch[kivitel][]': 120,
-    'HirdetesSzemelyautoSearch[vetelar_min]': 2750000,
-    'HirdetesSzemelyautoSearch[vetelar_max]': 3500000,
-    'HirdetesSzemelyautoSearch[uzemanyag][]': 1
+    'HirdetesSzemelyautoSearch[marka_id]': 146, # Volkswagen
+    'HirdetesSzemelyautoSearch[modell_id]': 1679, # Golf
+    'HirdetesSzemelyautoSearch[evjarat_min]': 2015, # Year min
+    'HirdetesSzemelyautoSearch[kivitel][]': 120, # Hatchback
+    'HirdetesSzemelyautoSearch[vetelar_min]': 2750000, # Min. price in HUF ~ € 7605
+    'HirdetesSzemelyautoSearch[vetelar_max]': 3500000, # Max. price in HUF ~ € 9678
+    'HirdetesSzemelyautoSearch[uzemanyag][]': 1 # Fuel, petrol
   }
   return json.loads(__post(base_url + '/egyszeru/szemelyauto', headers, payload).content)['totalCount']
   
