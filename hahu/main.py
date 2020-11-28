@@ -95,7 +95,6 @@ def crawl():
   search_key = __get_search_url()
   while curr < last:
     url = base_url + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1)
-    log.info(url)
     res = __get(url)
     __parse(BeautifulSoup(res, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
     if curr == 0:
