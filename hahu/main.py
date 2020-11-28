@@ -1,36 +1,58 @@
 from bs4 import BeautifulSoup
-import argparse
+from dotenv import load_dotenv
 import json
 import logging
 import math
+import os
 import requests
 import sys
 
-log = logging.getLogger(__name__)
-parser = argparse.ArgumentParser(description='Hasznaltauto crawler',
-                                prog='hahu')
-parser.add_argument('--config',
-                    default='config.json',
-                    help='path to the configuration file',
-                    nargs='?')
-parser.add_argument('--user-agent',
-                    default='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0',
-                    help='User-Agent',
-                    nargs='?')
-base_url = 'https://www.hasznaltauto.hu'
+BASE_URL = 'https://www.hasznaltauto.hu'
+PAGE_SIZE = 20
 
-args = parser.parse_args()
+load_dotenv()
+
+log = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-page_size = 20
+
+payload = {
+  'HirdetesSzemelyautoSearch[marka_id]': os.getenv('CAR_MAKE'),
+  'HirdetesSzemelyautoSearch[modell_id]': os.getenv('CAR_MODEL'),
+  'HirdetesSzemelyautoSearch[evjarat_min]': os.getenv('CAR_MIN_YEAR'),
+  'HirdetesSzemelyautoSearch[kivitel][]': os.getenv('CAR_BODY_TYPE'),
+  'HirdetesSzemelyautoSearch[vetelar_max]': os.getenv('CAR_MAX_PRICE'),
+  'HirdetesSzemelyautoSearch[vetelar_min]': os.getenv('CAR_MIN_PRICE'),
+  'HirdetesSzemelyautoSearch[uzemanyag][]': os.getenv('CAR_FUEL_TYPE')
+}
+
+def __crawl(url):
+  __parse(BeautifulSoup(__get(url), 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
 def __get(url):
-    res = requests.get(url, headers={'User-Agent': args.user_agent})
-    if res.ok:
-      return res.content
-    else:
-      log.error(res.status_code)
-      sys.exit(res.status_code)
+  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')})
+  if res.ok:
+    return res.content
+  else:
+    log.error(res.status_code)
+    sys.exit(res.status_code)
 
+def __get_search_key():
+  headers = {
+    'Accept': 'application/json, text/javascript, */*, q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': os.getenv('USER_AGENT'),
+    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
+  }
+  return json.loads(__post(BASE_URL + '/egyszeru/szemelyauto', dict(payload, getSearchUrl=1), headers).content)['formUrl'].rsplit('/', 1)[-1]
+
+def __get_total():
+  headers = {
+    'Accept': 'application/json, text/javascript, */*, q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': os.getenv('USER_AGENT'),
+    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
+  }
+  return json.loads(__post(BASE_URL + '/egyszeru/szemelyauto', payload, headers).content)['totalCount']
 
 def __parse(divs):
   if (len(divs) > 0):
@@ -43,7 +65,7 @@ def __parse(divs):
       log.info(details.text)
       log.info(price.text)
 
-def __post(url, headers, payload):
+def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
   res = requests.post(url, data=payload, headers=headers)
   if res.ok:
     return res
@@ -51,56 +73,14 @@ def __post(url, headers, payload):
     log.error(res.status_code)
     sys.exit(res.status_code)
 
-def __get_search_url():
-  headers = {
-    'Accept': 'application/json, text/javascript, */*, q=0.01',
-    'X-Requested-With': 'XMLHttpRequest',
-    'User-Agent': args.user_agent,
-    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
-  }
-  payload = {
-    'HirdetesSzemelyautoSearch[marka_id]': 146,
-    'HirdetesSzemelyautoSearch[modell_id]': 1679,
-    'HirdetesSzemelyautoSearch[evjarat_min]': 2015,
-    'HirdetesSzemelyautoSearch[kivitel][]': 120,
-    'HirdetesSzemelyautoSearch[vetelar_min]': 2750000,
-    'HirdetesSzemelyautoSearch[vetelar_max]': 3500000,
-    'HirdetesSzemelyautoSearch[uzemanyag][]': 1,
-    'getSearchUrl': 1
-  }
-  return json.loads(__post(base_url + '/egyszeru/szemelyauto', headers, payload).content)['formUrl'].rsplit('/', 1)[-1]
-
-def __get_total():
-  headers = {
-    'Accept': 'application/json, text/javascript, */*, q=0.01',
-    'X-Requested-With': 'XMLHttpRequest',
-    'User-Agent': args.user_agent,
-    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
-  }
-  payload = {
-    'HirdetesSzemelyautoSearch[marka_id]': 146, # Volkswagen
-    'HirdetesSzemelyautoSearch[modell_id]': 1679, # Golf
-    'HirdetesSzemelyautoSearch[evjarat_min]': 2015, # Year min
-    'HirdetesSzemelyautoSearch[kivitel][]': 120, # Hatchback
-    'HirdetesSzemelyautoSearch[vetelar_min]': 2750000, # Min. price in HUF ~ € 7605
-    'HirdetesSzemelyautoSearch[vetelar_max]': 3500000, # Max. price in HUF ~ € 9678
-    'HirdetesSzemelyautoSearch[uzemanyag][]': 1 # Fuel, petrol
-  }
-  return json.loads(__post(base_url + '/egyszeru/szemelyauto', headers, payload).content)['totalCount']
-  
-
-def crawl():
+def main():
   curr = 0
-  last = math.ceil(__get_total() / page_size)
-  search_key = __get_search_url()
+  last = math.ceil(__get_total() / PAGE_SIZE)
+  search_key = __get_search_key()
+  log.info(payload)
   while curr < last:
-    url = base_url + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1)
-    res = __get(url)
-    __parse(BeautifulSoup(res, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
+    __crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
     curr += 1
 
-def main():
-    crawl()
-
 if __name__ == '__main__':
-    main()
+  main()
