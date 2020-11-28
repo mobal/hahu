@@ -26,7 +26,7 @@ payload = {
 }
 
 def __crawl(url):
-  __parse(BeautifulSoup(__get(url), 'html.parser').find_all('div', {'class': 'talalati-sor'}))
+  return __parse(BeautifulSoup(__get(url), 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
 def __get(url):
   res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')})
@@ -56,14 +56,19 @@ def __get_total():
 
 def __parse(divs):
   if (len(divs) > 0):
+    cars = []
     for div in divs:
       a = div.find('h3').find('a', href=True)
       details = div.find('div', {'class': 'talalatisor-info adatok'})
       price = div.find('div', {'class': 'vetelar'})
-      log.info(a.text)
-      log.info(a['href'])
-      log.info(details.text)
-      log.info(price.text)
+      cars.append({
+        'title': a.text,
+        'url': a['href'],
+        'details': details.text,
+        'price': price.text
+      })
+    return cars
+  return []
 
 def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
   res = requests.post(url, data=payload, headers=headers)
@@ -74,13 +79,14 @@ def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
     sys.exit(res.status_code)
 
 def main():
+  cars = []
   curr = 0
   last = math.ceil(__get_total() / PAGE_SIZE)
   search_key = __get_search_key()
-  log.info(payload)
   while curr < last:
-    __crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
+    cars.append(__crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1)))
     curr += 1
+  log.info(cars)
 
 if __name__ == '__main__':
   main()
