@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "hahu"
 version = "0.1.0"
-description = ""
+description = "Hasznaltauto.hu crawler"
 authors = ["mobal <info@netcode.hu>"]
 
 [tool.poetry.dependencies]
@@ -9,6 +9,7 @@ python = "^3.8.5"
 pylint = "^2.6.0"
 requests = "^2.24.0"
 beautifulsoup4 = "^4.9.3"
+python-dotenv = "^0.15.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.6"
