@@ -10,6 +10,7 @@ pylint = "^2.6.0"
 requests = "^2.24.0"
 beautifulsoup4 = "^4.9.3"
 python-dotenv = "^0.15.0"
+chevron = "^0.13.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.6"
