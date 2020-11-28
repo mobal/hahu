@@ -1,6 +1,9 @@
 
-# Created by https://www.toptal.com/developers/gitignore/api/macos,python,vscode
-# Edit at https://www.toptal.com/developers/gitignore?templates=macos,python,vscode
+# Created by https://www.toptal.com/developers/gitignore/api/macos,python,vscode,dotenv
+# Edit at https://www.toptal.com/developers/gitignore?templates=macos,python,vscode,dotenv
+
+### dotenv ###
+.env
 
 ### macOS ###
 # General
@@ -138,7 +141,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -179,4 +181,4 @@ dmypy.json
 !.vscode/extensions.json
 *.code-workspace
 
-# End of https://www.toptal.com/developers/gitignore/api/macos,python,vscode
+# End of https://www.toptal.com/developers/gitignore/api/macos,python,vscode,dotenv

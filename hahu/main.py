@@ -1,47 +1,86 @@
 from bs4 import BeautifulSoup
-import argparse
+from dotenv import load_dotenv
+import json
 import logging
+import math
+import os
 import requests
 import sys
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+BASE_URL = 'https://www.hasznaltauto.hu'
+PAGE_SIZE = 20
+
+load_dotenv()
 
 log = logging.getLogger(__name__)
-parser = argparse.ArgumentParser(description='Hasznaltauto crawler',
-                                prog='hahu')
-parser.add_argument('--config',
-                    default='config.json',
-                    help='path to the configuration file',
-                    nargs='?')
-parser.add_argument('--user-agent',
-                    default='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0',
-                    help='User-Agent',
-                    nargs='?')
-base_url = 'https://www.hasznaltauto.hu/talalatilista'
-filter_list = 'PDNG2VGRR2RTADH4C47GAVJIFRW7N4KWU6VXJKSOHLUV5EK3LSNCMIKVCLILNK767M4QTXIFLJPLBRTGHSPDQAC3X2ZE7S6SRQSQEHBW3JYNQYU7XQIZNMWELZI2DPCA452IA4UWQCOBM3QH7TEE3DIONUHTLWDL6K3GHC4BUQTVRAVJCRXT2SOJSKWCYFXUETZQF6AYBKLNS52BYEJOYTBVMGUVSWJOK4X2WUAVT76FTLJHVTMTVTMLS72WF7P53Q2ZHUQWUSVU4YCUC65LCJANN4JNDAEBO3HUC4X3UQQPH3UA2TWZGHGJ3CQUC6KEU6P2JP642I76DZHAASBYWC4WDREDP6NXVH2YBJK7LCOPYAPUENXKG2YGNUTZ35J5JBORN3K3ZWH6NBZVQ6A2OCAW7TJAV75C5H4R5Q5XEQRVAUEXPVTZ2VV7XF2X7DCW3JY523XKKHGWWIHYW7MQ544FS3KFDAIRKDYXVECSQ245PBHLDKSRYESLJIKOL4EF4PT45HSQR3EP3GGYSN66B3V3SP53DUX4EENROZ7YR2OBBPHHZ2JQDKP24RQRLKK55I63TRODHPIE4OZH2SO7VXTUSKNPBEX6R3XAHNAXNATMZ4LAN6QTGSAJM7WXZPUY4Y4UWY447E4IX4OSY7FRRZZ6ZZRVYRE5UT4YQ3MDUYZW4LTUTKNSR5O62BTGSUORRIVJRDOXJG2PRGFC6HEH7CPKVJCRQL7TP4DDUGT77MKTQGE7GEKWW25PQK3FZDDRLIEG55MBP6GMDFCQSQUJZXZBLPAU5AUYFUGMRDRWXLSWHGFWKNEK4YCW5JIJ3PM6JGDXAG75BZPYK3RP7U4EOPVBHXH4J5522VDW25BTMGQ7GIYONQXWRK4DGYGUQNKRKTDH6FP5C27NCW5UTOXMDO66O4FNXENQ3N7VUVNB5M'
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-args = parser.parse_args()
+payload = {
+  'HirdetesSzemelyautoSearch[marka_id]': os.getenv('CAR_MAKE'),
+  'HirdetesSzemelyautoSearch[modell_id]': os.getenv('CAR_MODEL'),
+  'HirdetesSzemelyautoSearch[evjarat_min]': os.getenv('CAR_MIN_YEAR'),
+  'HirdetesSzemelyautoSearch[kivitel][]': os.getenv('CAR_BODY_TYPE'),
+  'HirdetesSzemelyautoSearch[vetelar_max]': os.getenv('CAR_MAX_PRICE'),
+  'HirdetesSzemelyautoSearch[vetelar_min]': os.getenv('CAR_MIN_PRICE'),
+  'HirdetesSzemelyautoSearch[uzemanyag][]': os.getenv('CAR_FUEL_TYPE')
+}
+
+def __crawl(url):
+  __parse(BeautifulSoup(__get(url), 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
 def __get(url):
-    res = requests.get(url, headers={'User-Agent': args.user_agent})
-    if res.ok:
-        return res.content
+  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')})
+  if res.ok:
+    return res.content
+  else:
+    log.error(res.status_code)
+    sys.exit(res.status_code)
 
-def __parse(soup):
-  for d in soup.findAll('div', {'class': 'talalati-sor'}):
-    a = d.find('h3').find('a', href=True)
-    details = d.find('div', {'class': 'talalatisor-info adatok'})
-    price = d.find('div', {'class': 'vetelar'})
-    log.info(a.text)
-    log.info(a['href'])
-    log.info(details.text)
-    log.info(price.text)
+def __get_search_key():
+  headers = {
+    'Accept': 'application/json, text/javascript, */*, q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': os.getenv('USER_AGENT'),
+    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
+  }
+  return json.loads(__post(BASE_URL + '/egyszeru/szemelyauto', dict(payload, getSearchUrl=1), headers).content)['formUrl'].rsplit('/', 1)[-1]
 
-def crawl(url):
-    __parse(BeautifulSoup(__get(url), 'html.parser'))
+def __get_total():
+  headers = {
+    'Accept': 'application/json, text/javascript, */*, q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': os.getenv('USER_AGENT'),
+    'Content-Type': 'Application/X-WWW-Form-URLEncoded; Charset=UTF-8'
+  }
+  return json.loads(__post(BASE_URL + '/egyszeru/szemelyauto', payload, headers).content)['totalCount']
+
+def __parse(divs):
+  if (len(divs) > 0):
+    for div in divs:
+      a = div.find('h3').find('a', href=True)
+      details = div.find('div', {'class': 'talalatisor-info adatok'})
+      price = div.find('div', {'class': 'vetelar'})
+      log.info(a.text)
+      log.info(a['href'])
+      log.info(details.text)
+      log.info(price.text)
+
+def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
+  res = requests.post(url, data=payload, headers=headers)
+  if res.ok:
+    return res
+  else:
+    log.error(res.status_code)
+    sys.exit(res.status_code)
 
 def main():
-    crawl(base_url + '/' + filter_list + '/page1')
+  curr = 0
+  last = math.ceil(__get_total() / PAGE_SIZE)
+  search_key = __get_search_key()
+  log.info(payload)
+  while curr < last:
+    __crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
+    curr += 1
 
 if __name__ == '__main__':
-    main()
+  main()
