@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from email.message import EmailMessage
-from pprint import pprint
 
 import base64
 import json
