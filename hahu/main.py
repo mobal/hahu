@@ -33,11 +33,11 @@ smtp = None
 def __crawl(url):
   return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
-def __create_message(car, sender=os.getenv('SMTP_FROM'), to=os.getenv('SMTP_TO')):
+def __create_message(car):
   msg = EmailMessage()
-  msg['From'] = 'Putt-Putt <{}>'.format(sender)
+  msg['From'] = 'Putt-Putt <{}>'.format(os.getenv('SMTP_FROM'))
   msg['Subject'] = car.get('title')
-  msg['To'] = to
+  msg['To'] = os.getenv('SMTP_TO')
   msg['X-Priority'] = '2'
   msg.set_content(str(car))
   return msg
