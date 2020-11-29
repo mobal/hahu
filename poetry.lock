@@ -68,6 +68,14 @@ version = "3.0.4"
 
 [[package]]
 category = "main"
+description = "Mustache templating language renderer"
+name = "chevron"
+optional = false
+python-versions = "*"
+version = "0.13.1"
+
+[[package]]
+category = "main"
 description = "Cross-platform colored terminal text."
 marker = "sys_platform == \"win32\" and python_version != \"3.4\" or sys_platform == \"win32\""
 name = "colorama"
@@ -286,7 +294,7 @@ python-versions = "*"
 version = "1.12.1"
 
 [metadata]
-content-hash = "b7b790e7ea663de0b98ef9c9d5b0af113941fb240507da6461e2c59f4c64e6bc"
+content-hash = "3847456a9f82a4e70689614d9e96c3c4a1f2e05e7071ca9764ac698804579588"
 python-versions = "^3.8.5"
 
 [metadata.files]
@@ -314,6 +322,10 @@ certifi = [
 chardet = [
     {file = "chardet-3.0.4-py2.py3-none-any.whl", hash = "sha256:fc323ffcaeaed0e0a02bf4d117757b98aed530d9ed4531e3e15460124c106691"},
     {file = "chardet-3.0.4.tar.gz", hash = "sha256:84ab92ed1c4d4f16916e05906b6b75a6c0fb5db821cc65e70cbd64a3e2a5eaae"},
+]
+chevron = [
+    {file = "chevron-0.13.1-py3-none-any.whl", hash = "sha256:95b0a055ef0ada5eb061d60be64a7f70670b53372ccd221d1b88adf1c41a9094"},
+    {file = "chevron-0.13.1.tar.gz", hash = "sha256:f95054a8b303268ebf3efd6bdfc8c1b428d3fc92327913b4e236d062ec61c989"},
 ]
 colorama = [
     {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
