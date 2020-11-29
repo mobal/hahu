@@ -27,7 +27,7 @@ payload = {
 }
 
 def __crawl(url):
-  return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
+  return __parse(BeautifulSoup(__get(url), 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
 def __get(url, stream=False):
   res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')},stream=stream)
