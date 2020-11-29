@@ -1,11 +1,15 @@
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from email.message import EmailMessage
+from pprint import pprint
+
 import base64
 import json
 import logging
 import math
 import os
 import requests
+import smtplib
 import sys
 
 BASE_URL = 'https://www.hasznaltauto.hu'
@@ -25,9 +29,19 @@ payload = {
   'HirdetesSzemelyautoSearch[vetelar_min]': os.getenv('CAR_MIN_PRICE'),
   'HirdetesSzemelyautoSearch[uzemanyag][]': os.getenv('CAR_FUEL_TYPE')
 }
+smtp = None
 
 def __crawl(url):
   return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
+
+def __create_message(car, sender=os.getenv('SMTP_FROM'), to=os.getenv('SMTP_TO')):
+  msg = EmailMessage()
+  msg['From'] = 'Putt-Putt <{}>'.format(sender)
+  msg['Subject'] = car.get('title')
+  msg['To'] = to
+  msg['X-Priority'] = '2'
+  msg.set_content(str(car))
+  return msg
 
 def __get(url, stream=False):
   res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')},stream=stream)
@@ -84,15 +98,28 @@ def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
     log.error(res.status_code)
     sys.exit(res.status_code)
 
+def __send_mails(cars):
+  try:
+    server = smtplib.SMTP(os.getenv('SMTP_HOST'), os.getenv('SMTP_PORT'))
+    server.starttls()
+    server.login(os.getenv('SMTP_USERNAME'), os.getenv('SMTP_PASSWORD'))
+    for car in cars:
+      server.sendmail(os.getenv('SMTP_FROM'), os.getenv('SMTP_TO'), __create_message(car).as_string())
+    server.close()
+  except:
+    ex = sys.exec_info()[0]
+    log.error(ex)
+    sys.exit(1)
+
 def main():
   cars = []
   curr = 0
   last = math.ceil(__get_total() / PAGE_SIZE)
   search_key = __get_search_key()
   while curr < last:
-    cars.append(__crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1)))
+    cars = cars +__crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
     curr += 1
-  log.info(cars)
+  __send_mails(cars)
 
 if __name__ == '__main__':
   main()
