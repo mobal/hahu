@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+import base64
 import json
 import logging
 import math
@@ -26,15 +27,18 @@ payload = {
 }
 
 def __crawl(url):
-  __parse(BeautifulSoup(__get(url), 'html.parser').find_all('div', {'class': 'talalati-sor'}))
+  return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
-def __get(url):
-  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')})
+def __get(url, stream=False):
+  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')},stream=stream)
   if res.ok:
-    return res.content
+    return res
   else:
     log.error(res.status_code)
     sys.exit(res.status_code)
+
+def __get_image_as_base64_string(url):
+  return str(base64.b64encode(__get(url, True).content).decode('utf-8'))
 
 def __get_search_key():
   headers = {
@@ -56,14 +60,21 @@ def __get_total():
 
 def __parse(divs):
   if (len(divs) > 0):
+    cars = []
     for div in divs:
       a = div.find('h3').find('a', href=True)
       details = div.find('div', {'class': 'talalatisor-info adatok'})
+      img = div.find('img', {'class': 'img-responsive'})
       price = div.find('div', {'class': 'vetelar'})
-      log.info(a.text)
-      log.info(a['href'])
-      log.info(details.text)
-      log.info(price.text)
+      cars.append({
+        'details': details.text,
+        'image': __get_image_as_base64_string(img['data-lazyurl'].replace('_1t', '')),
+        'price': price.text,
+        'title': a.text,
+        'url': a['href']
+      })
+    return cars
+  return []
 
 def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
   res = requests.post(url, data=payload, headers=headers)
@@ -74,13 +85,14 @@ def __post(url, payload, headers={'User-Agent': os.getenv('USER_AGENT')}):
     sys.exit(res.status_code)
 
 def main():
+  cars = []
   curr = 0
   last = math.ceil(__get_total() / PAGE_SIZE)
   search_key = __get_search_key()
-  log.info(payload)
   while curr < last:
-    __crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
+    cars.append(__crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1)))
     curr += 1
+  log.info(cars)
 
 if __name__ == '__main__':
   main()
