@@ -75,13 +75,10 @@ def __parse(divs):
     cars = []
     for div in divs:
       a = div.find('h3').find('a', href=True)
-      details = div.find('div', {'class': 'talalatisor-info adatok'})
-      img = div.find('img', {'class': 'img-responsive'})
-      price = div.find('div', {'class': 'vetelar'})
       cars.append({
-        'details': details.text,
-        'image': __get_image_as_base64_string(img['data-lazyurl'].replace('_1t', '')),
-        'price': price.text,
+        'details': div.find('div', {'class': 'talalatisor-info adatok'}).text,
+        'image': __get_image_as_base64_string(div.find('img', {'class': 'img-responsive'})['data-lazyurl'].replace('_1t', '')),
+        'price': div.find('div', {'class': 'vetelar'}).text,
         'title': a.text,
         'url': a['href']
       })
@@ -105,8 +102,7 @@ def __send_mails(cars):
       server.sendmail(os.getenv('SMTP_FROM'), os.getenv('SMTP_TO'), __create_message(car).as_string())
     server.close()
   except:
-    ex = sys.exec_info()[0]
-    log.error(ex)
+    log.error("Unexpected error: " + str(sys.exc_info()[0]))
     sys.exit(1)
 
 def main():
@@ -115,9 +111,10 @@ def main():
   last = math.ceil(__get_total() / PAGE_SIZE)
   search_key = __get_search_key()
   while curr < last:
-    cars = cars +__crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
+    cars += __crawl('{}/talalatilista/{}/page{}'.format(BASE_URL, search_key, str(curr + 1)))
     curr += 1
-  __send_mails(cars)
+  if (len(cars) > 0):
+    __send_mails(cars)
 
 if __name__ == '__main__':
   main()
