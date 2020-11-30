@@ -115,6 +115,8 @@ def main():
     curr += 1
   if (len(cars) > 0):
     __send_mails(cars)
+  else:
+    log.info("The search returned no results")
 
 if __name__ == '__main__':
   main()
