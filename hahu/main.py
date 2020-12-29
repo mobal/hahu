@@ -77,6 +77,7 @@ def __parse(divs):
       a = div.find('h3').find('a', href=True)
       cars.append({
         'details': div.find('div', {'class': 'talalatisor-info adatok'}).text,
+        'id': div.find('div', {'class': 'talalatisor-hirkod'}).text.split()[1][:-1],
         'image': __get_image_as_base64_string(div.find('img', {'class': 'img-responsive'})['data-lazyurl'].replace('_1t', '')),
         'price': div.find('div', {'class': 'vetelar'}).text,
         'title': a.text,
