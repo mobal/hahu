@@ -40,7 +40,7 @@ def __create_message(car):
   img_id = make_msgid()
   msg = EmailMessage()
   msg['From'] = 'Putt-Putt <{}>'.format(os.getenv('SMTP_FROM'))
-  msg['Subject'] = car.get('title')
+  msg['Subject'] = "[{0}] {1}".format(car.get('id'), car.get('title'))
   msg['To'] = os.getenv('SMTP_TO')
   msg['X-Priority'] = '2'
   with open(os.path.join(os.path.dirname(__file__), 'templates/mail.mustache'), 'r') as f:
