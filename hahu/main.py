@@ -22,10 +22,12 @@ log = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 payload = {
+  'HirdetesSzemelyautoSearch[evjarat_min]': os.getenv('CAR_MIN_YEAR'),
+  'HirdetesSzemelyautoSearch[futottkm_min]': os.getenv('CAR_DISTANCE_MIN'),
+  'HirdetesSzemelyautoSearch[futottkm_max]': os.getenv('CAR_DISTANCE_MAX'),
+  'HirdetesSzemelyautoSearch[kivitel][]': os.getenv('CAR_BODY_TYPE'),
   'HirdetesSzemelyautoSearch[marka_id]': os.getenv('CAR_MAKE'),
   'HirdetesSzemelyautoSearch[modell_id]': os.getenv('CAR_MODEL'),
-  'HirdetesSzemelyautoSearch[evjarat_min]': os.getenv('CAR_MIN_YEAR'),
-  'HirdetesSzemelyautoSearch[kivitel][]': os.getenv('CAR_BODY_TYPE'),
   'HirdetesSzemelyautoSearch[vetelar_max]': os.getenv('CAR_MAX_PRICE'),
   'HirdetesSzemelyautoSearch[vetelar_min]': os.getenv('CAR_MIN_PRICE'),
   'HirdetesSzemelyautoSearch[uzemanyag][]': os.getenv('CAR_FUEL_TYPE')
