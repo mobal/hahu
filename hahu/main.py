@@ -1,8 +1,10 @@
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from email.message import EmailMessage
+from email.utils import make_msgid
 
 import base64
+import chevron
 import json
 import logging
 import math
@@ -33,24 +35,33 @@ def __crawl(url):
   return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
 def __create_message(car):
+  img_id = make_msgid()
   msg = EmailMessage()
   msg['From'] = 'Putt-Putt <{}>'.format(os.getenv('SMTP_FROM'))
   msg['Subject'] = car.get('title')
   msg['To'] = os.getenv('SMTP_TO')
   msg['X-Priority'] = '2'
-  msg.set_content(str(car))
+  with open(os.path.join(os.path.dirname(__file__), 'templates/mail.mustache'), 'r') as f:
+    msg.add_alternative(chevron.render(f, car).format(img_id=img_id[1:-1]), subtype='html')
+    msg.get_payload()[0].add_related(car.get('image').read(), 'image', 'jpeg', cid=img_id)
   return msg
 
 def __get(url, stream=False):
-  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')},stream=stream)
+  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')}, stream=stream)
   if res.ok:
     return res
   else:
     log.error(res.status_code)
     sys.exit(res.status_code)
 
-def __get_image_as_base64_string(url):
-  return str(base64.b64encode(__get(url, True).content).decode('utf-8'))
+def __get_image(url):
+  res = __get(url, True)
+  if res.ok:
+    res.raw.decode_content = True
+    return res.raw
+  else:
+    log.error(res.status_code)
+    sys.exit(res.status_code)
 
 def __get_search_key():
   headers = {
@@ -78,7 +89,7 @@ def __parse(divs):
       cars.append({
         'details': div.find('div', {'class': 'talalatisor-info adatok'}).text,
         'id': div.find('div', {'class': 'talalatisor-hirkod'}).text.split()[1][:-1],
-        'image': __get_image_as_base64_string(div.find('img', {'class': 'img-responsive'})['data-lazyurl'].replace('_1t', '')),
+        'image': __get_image((div.find('img', {'class': 'img-responsive'})['data-lazyurl'].replace('_1t', ''))),
         'price': div.find('div', {'class': 'vetelar'}).text,
         'title': a.text,
         'url': a['href']
