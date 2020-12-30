@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 from email.message import EmailMessage
 from email.utils import make_msgid
 
-import base64
 import chevron
+import io
 import json
 import logging
 import math
@@ -12,6 +12,7 @@ import os
 import requests
 import smtplib
 import sys
+import traceback
 
 BASE_URL = 'https://www.hasznaltauto.hu'
 PAGE_SIZE = 20
@@ -43,8 +44,9 @@ def __create_message(car):
   msg['Subject'] = "[{0}] {1}".format(car.get('id'), car.get('title'))
   msg['To'] = os.getenv('SMTP_TO')
   msg['X-Priority'] = '2'
-  with open(os.path.join(os.path.dirname(__file__), 'templates/mail.mustache'), 'r') as f:
-    msg.add_alternative(chevron.render(f, car).format(img_id=img_id[1:-1]), subtype='html')
+  with io.open(os.path.join(os.path.dirname(__file__), 'templates/mail.mustache'), 'r', encoding='utf-8') as f:
+    car['img_id'] = img_id[1:-1]
+    msg.add_alternative(chevron.render(f, car), subtype='html')
     msg.get_payload()[0].add_related(car.get('image').read(), 'image', 'jpeg', cid=img_id)
   return msg
 
@@ -116,7 +118,7 @@ def __send_mails(cars):
       server.sendmail(os.getenv('SMTP_FROM'), os.getenv('SMTP_TO'), __create_message(car).as_string())
     server.close()
   except:
-    log.error("Unexpected error: " + str(sys.exc_info()[0]))
+    log.error(traceback.format_exc())
     sys.exit(1)
 
 def main():
