@@ -1,8 +1,10 @@
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from email.message import EmailMessage
+from email.utils import make_msgid
 
-import base64
+import chevron
+import io
 import json
 import logging
 import math
@@ -10,6 +12,7 @@ import os
 import requests
 import smtplib
 import sys
+import traceback
 
 BASE_URL = 'https://www.hasznaltauto.hu'
 PAGE_SIZE = 20
@@ -20,10 +23,12 @@ log = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 payload = {
+  'HirdetesSzemelyautoSearch[evjarat_min]': os.getenv('CAR_MIN_YEAR'),
+  'HirdetesSzemelyautoSearch[futottkm_min]': os.getenv('CAR_DISTANCE_MIN'),
+  'HirdetesSzemelyautoSearch[futottkm_max]': os.getenv('CAR_DISTANCE_MAX'),
+  'HirdetesSzemelyautoSearch[kivitel][]': os.getenv('CAR_BODY_TYPE'),
   'HirdetesSzemelyautoSearch[marka_id]': os.getenv('CAR_MAKE'),
   'HirdetesSzemelyautoSearch[modell_id]': os.getenv('CAR_MODEL'),
-  'HirdetesSzemelyautoSearch[evjarat_min]': os.getenv('CAR_MIN_YEAR'),
-  'HirdetesSzemelyautoSearch[kivitel][]': os.getenv('CAR_BODY_TYPE'),
   'HirdetesSzemelyautoSearch[vetelar_max]': os.getenv('CAR_MAX_PRICE'),
   'HirdetesSzemelyautoSearch[vetelar_min]': os.getenv('CAR_MIN_PRICE'),
   'HirdetesSzemelyautoSearch[uzemanyag][]': os.getenv('CAR_FUEL_TYPE')
@@ -33,24 +38,34 @@ def __crawl(url):
   return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
 
 def __create_message(car):
+  img_id = make_msgid()
   msg = EmailMessage()
   msg['From'] = 'Putt-Putt <{}>'.format(os.getenv('SMTP_FROM'))
-  msg['Subject'] = car.get('title')
+  msg['Subject'] = "[{0}] {1}".format(car.get('id'), car.get('title'))
   msg['To'] = os.getenv('SMTP_TO')
   msg['X-Priority'] = '2'
-  msg.set_content(str(car))
+  with io.open(os.path.join(os.path.dirname(__file__), 'templates/mail.mustache'), 'r', encoding='utf-8') as f:
+    car['img_id'] = img_id[1:-1]
+    msg.add_alternative(chevron.render(f, car), subtype='html')
+    msg.get_payload()[0].add_related(car.get('image').read(), 'image', 'jpeg', cid=img_id)
   return msg
 
 def __get(url, stream=False):
-  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')},stream=stream)
+  res = requests.get(url, headers={'User-Agent': os.getenv('USER_AGENT')}, stream=stream)
   if res.ok:
     return res
   else:
     log.error(res.status_code)
     sys.exit(res.status_code)
 
-def __get_image_as_base64_string(url):
-  return str(base64.b64encode(__get(url, True).content).decode('utf-8'))
+def __get_image(url):
+  res = __get(url, True)
+  if res.ok:
+    res.raw.decode_content = True
+    return res.raw
+  else:
+    log.error(res.status_code)
+    sys.exit(res.status_code)
 
 def __get_search_key():
   headers = {
@@ -75,13 +90,11 @@ def __parse(divs):
     cars = []
     for div in divs:
       a = div.find('h3').find('a', href=True)
-      details = div.find('div', {'class': 'talalatisor-info adatok'})
-      img = div.find('img', {'class': 'img-responsive'})
-      price = div.find('div', {'class': 'vetelar'})
       cars.append({
-        'details': details.text,
-        'image': __get_image_as_base64_string(img['data-lazyurl'].replace('_1t', '')),
-        'price': price.text,
+        'details': div.find('div', {'class': 'talalatisor-info adatok'}).text,
+        'id': div.find('div', {'class': 'talalatisor-hirkod'}).text.split()[1][:-1],
+        'image': __get_image((div.find('img', {'class': 'img-responsive'})['data-lazyurl'].replace('_1t', ''))),
+        'price': div.find('div', {'class': 'vetelar'}).text,
         'title': a.text,
         'url': a['href']
       })
@@ -105,8 +118,7 @@ def __send_mails(cars):
       server.sendmail(os.getenv('SMTP_FROM'), os.getenv('SMTP_TO'), __create_message(car).as_string())
     server.close()
   except:
-    ex = sys.exec_info()[0]
-    log.error(ex)
+    log.error(traceback.format_exc())
     sys.exit(1)
 
 def main():
@@ -115,9 +127,12 @@ def main():
   last = math.ceil(__get_total() / PAGE_SIZE)
   search_key = __get_search_key()
   while curr < last:
-    cars = cars +__crawl(BASE_URL + '/talalatilista' + '/' + search_key + '/page' + str(curr + 1))
+    cars += __crawl('{}/talalatilista/{}/page{}'.format(BASE_URL, search_key, str(curr + 1)))
     curr += 1
-  __send_mails(cars)
+  if (len(cars) > 0):
+    __send_mails(cars)
+  else:
+    log.info("The search returned no results")
 
 if __name__ == '__main__':
   main()
