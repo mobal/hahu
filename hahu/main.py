@@ -35,7 +35,6 @@ payload = {
 }
 
 def __crawl(url):
-  # return __parse(BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'}))
   divs = BeautifulSoup(__get(url).content, 'html.parser').find_all('div', {'class': 'talalati-sor'})
   if (len(divs) > 0):
     return __parse(divs)
