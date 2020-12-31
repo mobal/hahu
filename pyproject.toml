@@ -11,6 +11,7 @@ requests = "^2.24.0"
 beautifulsoup4 = "^4.9.3"
 python-dotenv = {extras = ["cli"], version = "^0.15.0"}
 chevron = "^0.13.1"
+black = "^20.8b1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.6"
