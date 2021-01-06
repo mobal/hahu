@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hahu"
-version = "0.2.1"
+version = "1.0.0"
 description = "Hasznaltauto.hu crawler"
 authors = ["mobal <info@netcode.hu>"]
 
