@@ -144,16 +144,20 @@ def __post(url, payload, headers={"User-Agent": os.getenv("USER_AGENT")}):
         log.error(res.status_code)
         sys.exit(res.status_code)
 
+
 def __load_database():
-    if (os.path.exists(os.getenv("DB_PATH"))):
+    if os.path.exists(os.getenv("DB_PATH")):
         with open(os.getenv("DB_PATH"), "r") as f:
             try:
                 return json.load(f)
             except:
                 log.error(traceback.format_exc())
     else:
-        log.error("The given path \"{}\" is not a valid path".format(os.getenv("DB_PATH")))
+        log.error(
+            'The given path "{}" is not a valid path'.format(os.getenv("DB_PATH"))
+        )
     return []
+
 
 def __save_database(data):
     with open(os.getenv("DB_PATH"), "w") as f:
@@ -162,6 +166,7 @@ def __save_database(data):
         except:
             log.error(traceback.format_exc())
             sys.exit(1)
+
 
 def __update_database(cars):
     diff = []
@@ -172,9 +177,10 @@ def __update_database(cars):
         if t not in db:
             db.append(t)
             diff.append(c)
-    if (len(diff) > 0):
+    if len(diff) > 0:
         __save_database(db)
     return diff
+
 
 def __send_mails(cars):
     log.info("Sending email(s)...")
@@ -206,8 +212,8 @@ def main():
         curr += 1
     if len(cars) > 0:
         diff = __update_database(cars)
-        log.info("Found \"{}\" new car(s)".format(len(diff)))
-        if (len(diff) > 0):
+        log.info('Found "{}" new car(s)'.format(len(diff)))
+        if len(diff) > 0:
             __send_mails(diff)
     else:
         log.info("The search returned no results")
