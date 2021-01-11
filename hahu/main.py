@@ -56,11 +56,14 @@ def __create_message(car):
         encoding="utf-8",
     ) as f:
         if car["image"]:
-            car["img_id"] = make_msgid()[1:-1]
+            img_id = make_msgid()
+            car["img_id"] = img_id[1:-1]
+            msg.add_alternative(chevron.render(f, car), subtype="html")
             msg.get_payload()[0].add_related(
-                car.get("image").read(), "image", "jpeg", cid=car["img_id"]
+                car.get("image").read(), "image", "jpeg", cid=img_id
             )
-        msg.add_alternative(chevron.render(f, car), subtype="html")
+        else:
+            msg.add_alternative(chevron.render(f, car), subtype="html")
     return msg
 
 
@@ -122,11 +125,13 @@ def __parse(divs):
                 "id": div.find("div", {"class": "talalatisor-hirkod"}).text.split()[1][
                     :-1
                 ],
-                "image": lambda div: __get_image(
+                "image": __get_image(
                     div.find("img", {"class": "img-responsive"})[
                         "data-lazyurl"
                     ].replace("_1t", "")
-                ),
+                )
+                if div.find("img", {"class": "img-responsive"}).has_attr("data-lazyurl")
+                else None,
                 "price": div.find("div", {"class": "vetelar"}).text,
                 "title": a.text,
                 "url": a["href"],
