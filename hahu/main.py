@@ -80,7 +80,6 @@ def __get(url, stream=False):
 
 def __get_image(url):
     res = __get(url, True)
-    log.info(url)
     if res.ok:
         res.raw.decode_content = True
         return res.raw
@@ -137,7 +136,6 @@ def __parse(divs):
                 "url": a["href"],
             }
         )
-        log.info(cars[-1])
     return cars
 
 
