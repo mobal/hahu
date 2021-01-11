@@ -45,7 +45,6 @@ def __crawl(url):
 
 
 def __create_message(car):
-    img_id = make_msgid()
     msg = EmailMessage()
     msg["From"] = "Putt-Putt <{}>".format(os.getenv("SMTP_FROM"))
     msg["Subject"] = "[{0}] {1}".format(car.get("id"), car.get("title"))
@@ -56,11 +55,12 @@ def __create_message(car):
         "r",
         encoding="utf-8",
     ) as f:
-        car["img_id"] = img_id[1:-1]
+        if car["image"]:
+            car["img_id"] = make_msgid()[1:-1]
+            msg.get_payload()[0].add_related(
+                car.get("image").read(), "image", "jpeg", cid=car["img_id"]
+            )
         msg.add_alternative(chevron.render(f, car), subtype="html")
-        msg.get_payload()[0].add_related(
-            car.get("image").read(), "image", "jpeg", cid=img_id
-        )
     return msg
 
 
@@ -77,6 +77,7 @@ def __get(url, stream=False):
 
 def __get_image(url):
     res = __get(url, True)
+    log.info(url)
     if res.ok:
         res.raw.decode_content = True
         return res.raw
@@ -126,7 +127,7 @@ def __parse(divs):
                         "data-lazyurl"
                     ].replace("_1t", "")
                 )
-                if div.find("img", {"class": "img-responsive"})
+                if "data-lazyurl" in div.find("img", {"class": "img-responsive"})
                 else None,
                 "price": div.find("div", {"class": "vetelar"}).text,
                 "title": a.text,
