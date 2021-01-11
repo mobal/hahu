@@ -122,18 +122,17 @@ def __parse(divs):
                 "id": div.find("div", {"class": "talalatisor-hirkod"}).text.split()[1][
                     :-1
                 ],
-                "image": __get_image(
+                "image": lambda div: __get_image(
                     div.find("img", {"class": "img-responsive"})[
                         "data-lazyurl"
                     ].replace("_1t", "")
-                )
-                if "data-lazyurl" in div.find("img", {"class": "img-responsive"})
-                else None,
+                ),
                 "price": div.find("div", {"class": "vetelar"}).text,
                 "title": a.text,
                 "url": a["href"],
             }
         )
+        log.info(cars[-1])
     return cars
 
 
