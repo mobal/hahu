@@ -122,12 +122,12 @@ def __parse(divs):
                     :-1
                 ],
                 "image": __get_image(
-                    (
-                        div.find("img", {"class": "img-responsive"})[
-                            "data-lazyurl"
-                        ].replace("_1t", "")
-                    )
-                ),
+                    div.find("img", {"class": "img-responsive"})[
+                        "data-lazyurl"
+                    ].replace("_1t", "")
+                )
+                if div.find("img", {"class": "img-responsive"})
+                else None,
                 "price": div.find("div", {"class": "vetelar"}).text,
                 "title": a.text,
                 "url": a["href"],
