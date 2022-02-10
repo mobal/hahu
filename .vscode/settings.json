@@ -1,6 +1,8 @@
 {
+    "python.linting.pylintArgs": ["--errors-only"],
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
     "python.venvPath": "C:\\Users\\mobal\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\hahu-IoIBy1ui-py3.9",
-    "python.pythonPath": "C:\\Users\\mobal\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\hahu-IoIBy1ui-py3.9"
+    "python.pythonPath": "C:\\Users\\mobal\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\hahu-IoIBy1ui-py3.9",
+    "python.formatting.provider": "black"
 }

@@ -14,12 +14,14 @@ import smtplib
 import sys
 import traceback
 
+
+
 BASE_URL = "https://www.hasznaltauto.hu"
 PAGE_SIZE = 20
 
 load_dotenv()
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 payload = {
@@ -35,16 +37,16 @@ payload = {
 }
 
 
-def __crawl(url):
-    divs = BeautifulSoup(__get(url).content, "html.parser").find_all(
+def _crawl(url):
+    divs = BeautifulSoup(_get(url).content, "html.parser").find_all(
         "div", {"class": "talalati-sor"}
     )
     if len(divs) > 0:
-        return __parse(divs)
+        return _parse(divs)
     return []
 
 
-def __create_message(car):
+def _create_message(car):
     msg = EmailMessage()
     msg["From"] = "Putt-Putt <{}>".format(os.getenv("SMTP_FROM"))
     msg["Subject"] = "[{0}] {1}".format(car.get("id"), car.get("title"))
@@ -67,28 +69,28 @@ def __create_message(car):
     return msg
 
 
-def __get(url, stream=False):
+def _get(url, stream=False):
     res = requests.get(
         url, headers={"User-Agent": os.getenv("USER_AGENT")}, stream=stream
     )
     if res.ok:
         return res
     else:
-        log.error(res.status_code)
+        logger.error(res.status_code)
         sys.exit(res.status_code)
 
 
-def __get_image(url):
-    res = __get(url, True)
+def _get_image(url):
+    res = _get(url, True)
     if res.ok:
         res.raw.decode_content = True
         return res.raw
     else:
-        log.error(res.status_code)
+        logger.error(res.status_code)
         sys.exit(res.status_code)
 
 
-def __get_search_key():
+def _get_search_key():
     headers = {
         "Accept": "application/json, text/javascript, */*, q=0.01",
         "X-Requested-With": "XMLHttpRequest",
@@ -96,13 +98,13 @@ def __get_search_key():
         "Content-Type": "Application/X-WWW-Form-URLEncoded; Charset=UTF-8",
     }
     return json.loads(
-        __post(
+        _post(
             BASE_URL + "/egyszeru/szemelyauto", dict(payload, getSearchUrl=1), headers
         ).content
     )["formUrl"].rsplit("/", 1)[-1]
 
 
-def __get_total():
+def _get_total():
     headers = {
         "Accept": "application/json, text/javascript, */*, q=0.01",
         "X-Requested-With": "XMLHttpRequest",
@@ -110,11 +112,11 @@ def __get_total():
         "Content-Type": "Application/X-WWW-Form-URLEncoded; Charset=UTF-8",
     }
     return json.loads(
-        __post(BASE_URL + "/egyszeru/szemelyauto", payload, headers).content
+        _post(BASE_URL + "/egyszeru/szemelyauto", payload, headers).content
     )["totalCount"]
 
 
-def __parse(divs):
+def _parse(divs):
     cars = []
     for div in divs:
         a = div.find("h3").find("a", href=True)
@@ -124,7 +126,7 @@ def __parse(divs):
                 "id": div.find("div", {"class": "talalatisor-hirkod"}).text.split()[1][
                     :-1
                 ],
-                "image": __get_image(
+                "image": _get_image(
                     div.find("img", {"class": "img-responsive"})[
                         "data-lazyurl"
                     ].replace("_1t", "")
@@ -139,54 +141,54 @@ def __parse(divs):
     return cars
 
 
-def __post(url, payload, headers={"User-Agent": os.getenv("USER_AGENT")}):
+def _post(url, payload, headers={"User-Agent": os.getenv("USER_AGENT")}):
     res = requests.post(url, data=payload, headers=headers)
     if res.ok:
         return res
     else:
-        log.error(res.status_code)
+        logger.error(res.status_code)
         sys.exit(res.status_code)
 
 
-def __load_database():
+def _load_database():
     if os.path.exists(os.getenv("DB_PATH")):
         with open(os.getenv("DB_PATH"), "r") as f:
             try:
                 return json.load(f)
             except:
-                log.error(traceback.format_exc())
+                logger.error(traceback.format_exc())
     else:
-        log.error(
+        logger.error(
             'The given path "{}" is not a valid path'.format(os.getenv("DB_PATH"))
         )
     return []
 
 
-def __save_database(data):
+def _save_database(data):
     with open(os.getenv("DB_PATH"), "w") as f:
         try:
             json.dump(data, f)
         except:
-            log.error(traceback.format_exc())
+            logger.error(traceback.format_exc())
             sys.exit(1)
 
 
-def __update_database(cars):
+def _update_database(cars):
     diff = []
-    db = __load_database()
-    for c in cars:
-        t = c.copy()
-        t.pop("image")
-        if t not in db:
-            db.append(t)
-            diff.append(c)
+    database = _load_database()
+    for car in cars:
+        temp = car.copy()
+        temp.pop("image")
+        if temp not in database:
+            database.append(temp)
+            diff.append(car)
     if len(diff) > 0:
-        __save_database(db)
+        _save_database(database)
     return diff
 
 
-def __send_mails(cars):
-    log.info("Sending email(s)...")
+def _send_mails(cars):
+    logger.info("Sending email(s)...")
     try:
         server = smtplib.SMTP(os.getenv("SMTP_HOST"), os.getenv("SMTP_PORT"))
         server.starttls()
@@ -195,31 +197,31 @@ def __send_mails(cars):
             server.sendmail(
                 os.getenv("SMTP_FROM"),
                 os.getenv("SMTP_TO"),
-                __create_message(car).as_string(),
+                _create_message(car).as_string(),
             )
         server.close()
     except:
-        log.error(traceback.format_exc())
+        logger.error(traceback.format_exc())
         sys.exit(1)
 
 
 def main():
     cars = []
     curr = 0
-    last = math.ceil(__get_total() / PAGE_SIZE)
-    search_key = __get_search_key()
+    last = math.ceil(_get_total() / PAGE_SIZE)
+    search_key = _get_search_key()
     while curr < last:
-        cars += __crawl(
+        cars += _crawl(
             "{}/talalatilista/{}/page{}".format(BASE_URL, search_key, str(curr + 1))
         )
         curr += 1
     if len(cars) > 0:
-        diff = __update_database(cars)
-        log.info('Found "{}" new car(s)'.format(len(diff)))
+        diff = _update_database(cars)
+        logger.info('Found "{}" new car(s)'.format(len(diff)))
         if len(diff) > 0:
-            __send_mails(diff)
+            _send_mails(diff)
     else:
-        log.info("The search returned no results")
+        logger.info("The search returned no results")
 
 
 if __name__ == "__main__":
